@@ -7,7 +7,7 @@ from pytorch_pretrained_bert.tokenization import (
     BertTokenizer, PRETRAINED_VOCAB_POSITIONAL_EMBEDDINGS_SIZE_MAP,
 )
 
-
+# TODO change the file name, replace
 TF_PYTORCH_BERT_NAME_MAP = {
     "bert-base-uncased": "uncased_L-12_H-768_A-12",
     "bert-large-uncased": "uncased_L-24_H-1024_A-16",
@@ -31,7 +31,8 @@ def load_overall_state(bert_load_path, relaxed=True):
 def create_tokenizer(bert_model_name, bert_load_mode, do_lower_case, bert_vocab_path=None):
     if bert_load_mode == "from_pretrained":
         assert bert_vocab_path is None
-        tokenizer = BertTokenizer.from_pretrained(bert_model_name, do_lower_case=do_lower_case)
+        tokenizer = BertTokenizer.from_pretrained(
+            bert_model_name, do_lower_case=do_lower_case)
     elif bert_load_mode in ["model_only", "state_model_only", "state_all", "state_full_model",
                             "full_model_only",
                             "state_adapter"]:
@@ -47,8 +48,10 @@ def create_tokenizer(bert_model_name, bert_load_mode, do_lower_case, bert_vocab_
 
 def load_tokenizer(bert_model_name, do_lower_case, bert_vocab_path=None):
     if bert_vocab_path is None:
-        bert_vocab_path = os.path.join(get_bert_config_path(bert_model_name), "vocab.txt")
-    max_len = min(PRETRAINED_VOCAB_POSITIONAL_EMBEDDINGS_SIZE_MAP[bert_model_name], int(1e12))
+        bert_vocab_path = os.path.join(
+            get_bert_config_path(bert_model_name), "vocab.txt")
+    max_len = min(
+        PRETRAINED_VOCAB_POSITIONAL_EMBEDDINGS_SIZE_MAP[bert_model_name], int(1e12))
     tokenizer = BertTokenizer(
         vocab_file=bert_vocab_path,
         do_lower_case=do_lower_case,
@@ -78,8 +81,10 @@ def create_optimizer(model, learning_rate, t_total, loss_scale, fp16, warmup_pro
         'adapter.down_project.weight', 'adapter.up_project.weight',
     ]
     optimizer_grouped_parameters = [
-        {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)], 'weight_decay': 0.01},
-        {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
+        {'params': [p for n, p in param_optimizer if not any(
+            nd in n for nd in no_decay)], 'weight_decay': 0.01},
+        {'params': [p for n, p in param_optimizer if any(
+            nd in n for nd in no_decay)], 'weight_decay': 0.0}
     ]
     if fp16:
         try:
