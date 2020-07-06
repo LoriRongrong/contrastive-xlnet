@@ -3,57 +3,61 @@ import os
 import torch
 
 from pytorch_pretrained_bert.optimization import BertAdam
-from pytorch_pretrained_bert.tokenization import (
-    BertTokenizer, PRETRAINED_VOCAB_POSITIONAL_EMBEDDINGS_SIZE_MAP,
+from transformers import XLNetTokenizer
+# updated with relevant files
+from pytorch_pretrained_bert.tokenization_xlnet import (
+    PRETRAINED_VOCAB_POSITIONAL_EMBEDDINGS_SIZES, VOCAB_FILES_NAMES,
 )
 
-# TODO change the file name, replace
-TF_PYTORCH_BERT_NAME_MAP = {
-    "bert-base-uncased": "uncased_L-12_H-768_A-12",
-    "bert-large-uncased": "uncased_L-24_H-1024_A-16",
+
+TF_PYTORCH_XLNET_NAME_MAP = {
+    "XLNet-Large-Cased": "xlnet_cased_L-24_H_1024_A-16",
+    "XLNet-Base-Cased": "xlnet_cased_L-12_H_768_A-12",
 }
 
-
-def get_bert_config_path(bert_model_name):
-    return os.path.join(os.environ["BERT_ALL_DIR"], TF_PYTORCH_BERT_NAME_MAP[bert_model_name])
+# change variable name
 
 
-def load_overall_state(bert_load_path, relaxed=True):
-    if bert_load_path is None:
+def get_xlnet_config_path(xlnet_model_name):
+    return os.path.join(os.environ["BERT_ALL_DIR"], TF_PYTORCH_XLNET_NAME_MAP[xlnet_model_name])
+
+
+def load_overall_state(xlnet_load_path, relaxed=True):
+    if xlnet_load_path is None:
         if relaxed:
             return None
         else:
-            raise RuntimeError("Need 'bert_load_path'")
+            raise RuntimeError("Need 'xlnet_load_path'")
     else:
-        return torch.load(bert_load_path)
+        return torch.load(xlnet_load_path)
 
 
-def create_tokenizer(bert_model_name, bert_load_mode, do_lower_case, bert_vocab_path=None):
-    if bert_load_mode == "from_pretrained":
-        assert bert_vocab_path is None
-        tokenizer = BertTokenizer.from_pretrained(
-            bert_model_name, do_lower_case=do_lower_case)
-    elif bert_load_mode in ["model_only", "state_model_only", "state_all", "state_full_model",
-                            "full_model_only",
-                            "state_adapter"]:
+def create_tokenizer(xlnet_model_name, xlnet_load_mode, do_lower_case, xlnet_vocab_path=None):
+    if xlnet_load_mode == "from_pretrained":
+        assert xlnet_vocab_path is None
+        tokenizer = XLNetTokenizer.from_pretrained(
+            xlnet_model_name, do_lower_case=do_lower_case)
+    elif xlnet_load_mode in ["model_only", "state_model_only", "state_all", "state_full_model",
+                             "full_model_only",
+                             "state_adapter"]:
         tokenizer = load_tokenizer(
-            bert_model_name=bert_model_name,
+            xlnet_model_name=xlnet_model_name,
             do_lower_case=do_lower_case,
-            bert_vocab_path=bert_vocab_path,
+            xlnet_vocab_path=xlnet_vocab_path,
         )
     else:
-        raise KeyError(bert_load_mode)
+        raise KeyError(xlnet_load_mode)
     return tokenizer
 
 
-def load_tokenizer(bert_model_name, do_lower_case, bert_vocab_path=None):
-    if bert_vocab_path is None:
-        bert_vocab_path = os.path.join(
-            get_bert_config_path(bert_model_name), "vocab.txt")
+def load_tokenizer(xlnet_model_name, do_lower_case, xlnet_vocab_path=None):
+    if xlnet_vocab_path is None:
+        xlnet_vocab_path = os.path.join(
+            get_xlnet_config_path(xlnet_model_name), VOCAB_FILES_NAMES)
     max_len = min(
-        PRETRAINED_VOCAB_POSITIONAL_EMBEDDINGS_SIZE_MAP[bert_model_name], int(1e12))
-    tokenizer = BertTokenizer(
-        vocab_file=bert_vocab_path,
+        PRETRAINED_VOCAB_POSITIONAL_EMBEDDINGS_SIZES[VOCAB_FILES_NAMES, xlnet_model_name], int(1e12))
+    tokenizer = XLNetTokenizer(
+        vocab_file=xlnet_vocab_path,
         do_lower_case=do_lower_case,
         max_len=max_len,
     )

@@ -9,14 +9,12 @@ import logging
 # liscence added
 from glue.tasks import get_task     # already adjusted to sentiment analysis
 from glue.runners import GlueTaskRunner, RunnerParameters   # given, no need to modify
-# I think the glue model_setup is just simple bert setup, nothing to do with glue
+
 from glue import model_setup as glue_model_setup
 from shared import model_setup as shared_model_setup
 from pytorch_pretrained_bert.utils import at_most_one_of, random_sample
 import shared.initialization as initialization
 import shared.log_info as log_info
-
-# todo: cleanup imports
 
 
 def get_args(*in_args):
@@ -28,10 +26,8 @@ def get_args(*in_args):
                         type=str,
                         help="The input data dir. Should contain the .tsv files (or other data files) for the task.")
     # TODO: change the help method: change it into xlnet
-    parser.add_argument("--bert_model", default=None, type=str, required=True,
-                        help="Bert pre-trained model selected in the list: bert-base-uncased, "
-                        "bert-large-uncased, bert-base-cased, bert-large-cased, bert-base-multilingual-uncased, "
-                        "bert-base-multilingual-cased, bert-base-chinese.")
+    parser.add_argument("--xlnet_model", default=None, type=str, required=True,
+                        help="XLNet pre-trained model selected in the list: XLNet-Large-Cased, XLNet-Base-Cased")
     parser.add_argument("--task_name",
                         default=None,
                         type=str,
@@ -44,15 +40,15 @@ def get_args(*in_args):
                         help="The output directory where the model predictions and checkpoints will be written.")
 
     # === Model parameters === #
-    parser.add_argument("--bert_load_path", default=None, type=str)
+    parser.add_argument("--xlnet_load_path", default=None, type=str)
     # if the model is vanilla or pre-trained
-    parser.add_argument("--bert_load_mode", default="from_pretrained", type=str,
+    parser.add_argument("--xlnet_load_mode", default="from_pretrained", type=str,
                         help="from_pretrained, model_only, state_model_only, state_all")
-    parser.add_argument("--bert_load_args", default=None, type=str)
+    parser.add_argument("--xlnetload_args", default=None, type=str)
     # should be pre-trained saved parameters
-    parser.add_argument("--bert_config_json_path", default=None, type=str)
-    parser.add_argument("--bert_vocab_path", default=None, type=str)
-    parser.add_argument("--bert_save_mode", default="all", type=str)
+    parser.add_argument("--xlnet_config_json_path", default=None, type=str)
+    parser.add_argument("--xlnet_vocab_path", default=None, type=str)
+    parser.add_argument("--xlnet_save_mode", default="all", type=str)
 
     # === Other parameters === #
     parser.add_argument("--max_seq_length",
@@ -143,34 +139,32 @@ def main():
     initialization.init_seed(args, n_gpu=n_gpu, logger=logger)
     initialization.init_train_batch_size(args)
     initialization.init_output_dir(args)
-    initialization.save_args(args)
     # could cause problem because imdb is not part of the tasks defined
     task = get_task(args.task_name, args.data_dir)
 
     # create tokenizer using given model input
     # I think xlnet also use the same tokenizer
     tokenizer = shared_model_setup.create_tokenizer(
-        bert_model_name=args.bert_model,  # need to change
-        bert_load_mode=args.bert_load_mode,  # need to change
+        xlnet_model_name=args.xlnet_model,  # need to change
+        xlnet_load_mode=args.xlnet_load_mode,  # need to change
         do_lower_case=args.do_lower_case,
-        bert_vocab_path=args.bert_vocab_path,  # not sure how to modify
+        xlnet_vocab_path=args.xlnet_vocab_path,  # not sure how to modify
     )
     all_state = shared_model_setup.load_overall_state(
-        args.bert_load_path, relaxed=True)  # probably will be the pre-trained one
-    # TODO:just a simple bert model
-    # should be replaced with xlnet dir
+        args.xlnet_load_path, relaxed=True)  # probably will be the pre-trained one
+
     model = glue_model_setup.create_model(
         task_type=task.processor.TASK_TYPE,
-        bert_model_name=args.bert_model,
-        bert_load_mode=args.bert_load_mode,
-        bert_load_args=args.bert_load_args,
+        xlnet_model_name=args.xlnet_model,
+        xlnet_load_mode=args.xlnet_load_mode,
+        xlnet_load_args=args.xlnet_load_args,
         all_state=all_state,
         num_labels=len(task.processor.get_labels()),
         device=device,
         n_gpu=n_gpu,
         fp16=args.fp16,
         local_rank=args.local_rank,
-        bert_config_json_path=args.bert_config_json_path,
+        xlnet_config_json_path=args.xlnet_config_json_path,
     )
     if args.do_train:
         if args.print_trainable_params:
@@ -183,7 +177,7 @@ def main():
             num_train_examples=len(train_examples),
             args=args,
         )
-        # TODO: doesn xlnet needs optimizer??
+
         optimizer = shared_model_setup.create_optimizer(
             model=model,
             learning_rate=args.learning_rate,
@@ -234,7 +228,7 @@ def main():
                 for step, _, _ in runner.run_train_epoch_context(train_dataloader):
                     if step % args.train_save_every == args.train_save_every - 1 \
                             or step == len(train_dataloader) - 1:
-                        glue_model_setup.save_bert(
+                        glue_model_setup.save_xlnet(
                             model=model, optimizer=optimizer, args=args,
                             save_path=os.path.join(
                                 args.output_dir, f"all_state___epoch{epoch:04d}___batch{step:06d}.p"),
@@ -246,7 +240,7 @@ def main():
 
     if args.do_save:
         # Save a trained model
-        glue_model_setup.save_bert(
+        glue_model_setup.save_xlnet(
             model=model, optimizer=optimizer, args=args,
             save_path=os.path.join(args.output_dir, "all_state.p"),
             save_mode=args.bert_save_mode,
