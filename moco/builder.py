@@ -1,8 +1,8 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import torch
 import torch.nn as nn
-from transformers import BertTokenizer, BertForSequenceClassification
-
+from transformers import XLNetForSequenceClassification
+# modify the based model into XLNET and change relevant fields
 
 class MoCo(nn.Module):
     """
@@ -10,9 +10,9 @@ class MoCo(nn.Module):
     https://arxiv.org/abs/1911.05722
     """
 
-    def __init__(self, dim=300, K=65536, m=0.999, T=0.07, mlp=False):
+    def __init__(self, dim=2, K=65536, m=0.999, T=0.07, mlp=False):
         """
-        dim: feature dimension (default: 128)
+        dim: feature dimension (default: 2)
         K: queue size; number of negative keys (default: 65536)
         m: moco momentum of updating key encoder (default: 0.999)
         T: softmax temperature (default: 0.07)
@@ -24,39 +24,45 @@ class MoCo(nn.Module):
         self.T = T
 
         # create the encoders
-        self.encoder_q = BertForSequenceClassification.from_pretrained(
+        self.encoder_q = XLNetForSequenceClassification.from_pretrained(
             # Use the 12-layer BERT model, with an uncased vocab.
-            "bert-base-uncased",
+            "xlnet-base-cased",
             # The number of output labels--2 for binary classification.
-            num_labels=dim,
+            num_labels=2,
             # You can increase this for multi-class tasks.
             # Whether the model returns attentions weights.
             output_attentions=False,
             # Whether the model returns all hidden-states.
             output_hidden_states=False,
         )
-        self.encoder_k = BertForSequenceClassification.from_pretrained(
+        self.encoder_k = XLNetForSequenceClassification.from_pretrained(
             # Use the 12-layer BERT model, with an uncased vocab.
-            "bert-base-uncased",
+            "xlnet-base-cased",
             # The number of output labels--2 for binary classification.
-            num_labels=dim,
+            num_labels=2,
             # You can increase this for multi-class tasks.
             # Whether the model returns attentions weights.
             output_attentions=False,
             # Whether the model returns all hidden-states.
             output_hidden_states=False,
         )
-
-        fc_features = self.encoder_q.classifier.in_features
-        self.encoder_q.classifier = nn.Linear(fc_features, dim)
-        self.encoder_k.classifier = nn.Linear(fc_features, dim)
+        #  because the base model naming differencecs
+        #  change encoder_q.classifier into logits_proj
+        
+        fc_features = self.encoder_q.logits_proj.in_features
+        print('fc_feature moco nuilder 52 ',fc_features)
+        print('dim ', dim)
+        self.encoder_q.logits_proj = nn.Linear(fc_features, dim)
+        self.encoder_k.logits_proj = nn.Linear(fc_features, dim)
 
         if mlp:
-            dim_mlp = self.encoder_q.classifier.weight.shape[1]
-            self.encoder_q.classifier = nn.Sequential(
-                nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), self.encoder_q.classifier)
-            self.encoder_k.classifier = nn.Sequential(
-                nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), self.encoder_k.classifier)
+            dim_mlp = self.encoder_q.logits_proj.weight.shape[1]
+            print('dim_mlp ', dim_mlp)
+            self.encoder_q.logits_proj = nn.Sequential(
+                nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), self.encoder_q.logits_proj)
+            print(self.encoder_q.logits_proj)
+            self.encoder_k.logits_proj = nn.Sequential(
+                nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), self.encoder_k.logits_proj)
 
         for param_q, param_k in zip(self.encoder_q.parameters(), self.encoder_k.parameters()):
             param_k.data.copy_(param_q.data)  # initialize

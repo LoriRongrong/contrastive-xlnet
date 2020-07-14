@@ -26,8 +26,8 @@ def get_args(*in_args):
                         type=str,
                         help="The input data dir. Should contain the .tsv files (or other data files) for the task.")
     # TODO: change the help method: change it into xlnet
-    parser.add_argument("--xlnet_model", default=None, type=str, required=True,
-                        help="XLNet pre-trained model selected in the list: XLNet-Large-Cased, XLNet-Base-Cased")
+    parser.add_argument("--xlnet_model", default='xlnet-base-cased', type=str, required=True,
+                        help="XLNet pre-trained model selected in the list: xlnet-large-cased, xlnet-base-cased")
     parser.add_argument("--task_name",
                         default=None,
                         type=str,

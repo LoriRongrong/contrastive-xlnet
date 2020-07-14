@@ -15,8 +15,8 @@ PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES = {
 VOCAB_FILES_NAMES = {"vocab_file": "spiece.model"}
 
 TF_PYTORCH_XLNET_NAME_MAP = {
-    "XLNet-Large-Cased": "xlnet_cased_L-24_H_1024_A-16",
-    "XLNet-Base-Cased": "xlnet_cased_L-12_H_768_A-12",
+    "xlnet-large-cased": "xlnet-large-cased",
+    "xlnet-base-cased": "xlnet-based-cased",
 }
 
 # change variable name

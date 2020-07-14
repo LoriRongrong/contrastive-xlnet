@@ -25,7 +25,7 @@ python MOCO.py \
 #     if name.islower() and not name.startswith("__")
 #     and callable(models.__dict__[name]))
 
-from transformers import BertTokenizer
+from transformers import XLNetTokenizer
 import argparse
 import builtins
 import math
@@ -58,11 +58,11 @@ parser.add_argument('-a', '--arch', metavar='ARCH', default='./model',
                     help='model names')
 parser.add_argument('-j', '--workers', default=32, type=int, metavar='N',
                     help='number of data loading workers (default: 32)')
-parser.add_argument('--epochs', default=100, type=int, metavar='N',
+parser.add_argument('--epochs', default=6, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
-parser.add_argument('-b', '--batch_size', default=256, type=int,
+parser.add_argument('-b', '--batch_size', default=32, type=int,
                     metavar='N',
                     help='mini-batch size (default: 256), this is the total '
                          'batch size of all GPUs on the current node when '
@@ -94,7 +94,7 @@ parser.add_argument('--seed', default=None, type=int,
 parser.add_argument('--gpu', default=None, type=int,
                     help='GPU id to use.')
 #  change the default multiprocessing_distributed to False
-parser.add_argument('--multiprocessing_distributed', default=False,
+parser.add_argument('--multiprocessing_distributed', default=True,
                     help='Use multi-processing distributed training to launch '
                          'N processes per node, which has N GPUs. This is the '
                          'fastest way to use PyTorch for either single node or '
@@ -113,6 +113,7 @@ parser.add_argument('--moco-t', default=0.07, type=float,
                     help='softmax temperature (default: 0.07)')
 
 # options for moco v2
+#  change mlp to False to see if the shape problem is solved
 parser.add_argument('--mlp', default=True,
                     help='use mlp head')
 parser.add_argument('--aug-plus', default=True,
@@ -200,12 +201,12 @@ def main_worker(gpu, ngpus_per_node, args):
             args.workers = int(
                 (args.workers + ngpus_per_node - 1) / ngpus_per_node)
             model = torch.nn.parallel.DistributedDataParallel(
-                model, device_ids=[args.gpu])
+                model, device_ids=[args.gpu],find_unused_parameters=True)
         else:
             model.cuda()
             # DistributedDataParallel will divide and allocate batch_size to all
             # available GPUs if device_ids are not set
-            model = torch.nn.parallel.DistributedDataParallel(model)
+            model = torch.nn.parallel.DistributedDataParallel(model,find_unused_parameters=True)
     elif args.gpu is not None:
         torch.cuda.set_device(args.gpu)
         model = model.cuda(args.gpu)
@@ -246,10 +247,10 @@ def main_worker(gpu, ngpus_per_node, args):
     cudnn.benchmark = True
     input_ids = []
     attention_masks = []
-    path_to_biobert = './pretrained/'
+    # path_to_biobert = './pretrained/'
     #  change tokenizer to make it consistent
 
-    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+    tokenizer = XLNetTokenizer.from_pretrained("xlnet-base-cased")
 
     # encode data
     """ this part is different from the MOCO github code"""
@@ -311,7 +312,7 @@ def main_worker(gpu, ngpus_per_node, args):
                 'state_dict': model.state_dict(),
                 'optimizer': optimizer.state_dict(),
             }, is_best=False, filename='moco_model/moco.tar'.format(epoch))
-
+    # torch.save(model.state_dict(),'state_dict.t7')
 
 def train(train_loader, model, criterion, optimizer, epoch, args):
     batch_time = AverageMeter('Time', ':6.3f')
