@@ -3,11 +3,13 @@ import torch
 import torch.nn as nn
 from transformers import BertTokenizer, BertForSequenceClassification
 
+
 class MoCo(nn.Module):
     """
     Build a MoCo model with: a query encoder, a key encoder, and a queue
     https://arxiv.org/abs/1911.05722
     """
+
     def __init__(self, dim=300, K=65536, m=0.999, T=0.07, mlp=False):
         """
         dim: feature dimension (default: 128)
@@ -23,18 +25,26 @@ class MoCo(nn.Module):
 
         # create the encoders
         self.encoder_q = BertForSequenceClassification.from_pretrained(
-            './pretrained/',  # Use the 12-layer BERT model, with an uncased vocab.
-            num_labels=dim,  # The number of output labels--2 for binary classification.
+            # Use the 12-layer BERT model, with an uncased vocab.
+            "bert-base-uncased",
+            # The number of output labels--2 for binary classification.
+            num_labels=dim,
             # You can increase this for multi-class tasks.
-            output_attentions=False,  # Whether the model returns attentions weights.
-            output_hidden_states=False,  # Whether the model returns all hidden-states.
+            # Whether the model returns attentions weights.
+            output_attentions=False,
+            # Whether the model returns all hidden-states.
+            output_hidden_states=False,
         )
         self.encoder_k = BertForSequenceClassification.from_pretrained(
-            './pretrained/',  # Use the 12-layer BERT model, with an uncased vocab.
-            num_labels=dim,  # The number of output labels--2 for binary classification.
+            # Use the 12-layer BERT model, with an uncased vocab.
+            "bert-base-uncased",
+            # The number of output labels--2 for binary classification.
+            num_labels=dim,
             # You can increase this for multi-class tasks.
-            output_attentions=False,  # Whether the model returns attentions weights.
-            output_hidden_states=False,  # Whether the model returns all hidden-states.
+            # Whether the model returns attentions weights.
+            output_attentions=False,
+            # Whether the model returns all hidden-states.
+            output_hidden_states=False,
         )
 
         fc_features = self.encoder_q.classifier.in_features
@@ -43,8 +53,10 @@ class MoCo(nn.Module):
 
         if mlp:
             dim_mlp = self.encoder_q.classifier.weight.shape[1]
-            self.encoder_q.classifier = nn.Sequential(nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), self.encoder_q.classifier)
-            self.encoder_k.classifier = nn.Sequential(nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), self.encoder_k.classifier)
+            self.encoder_q.classifier = nn.Sequential(
+                nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), self.encoder_q.classifier)
+            self.encoder_k.classifier = nn.Sequential(
+                nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), self.encoder_k.classifier)
 
         for param_q, param_k in zip(self.encoder_q.parameters(), self.encoder_k.parameters()):
             param_k.data.copy_(param_q.data)  # initialize
@@ -153,7 +165,6 @@ class MoCo(nn.Module):
             # undo shuffle
             #k = self._batch_unshuffle_ddp(k, idx_unshuffle)
 
-
         l_pos = torch.einsum('nc,nc->n', [q, k]).unsqueeze(-1)
         # negative logits: NxK
         l_neg = torch.einsum('nc,ck->nk', [q, self.queue.clone().detach()])
@@ -170,6 +181,8 @@ class MoCo(nn.Module):
         return logits, labels
 
 # utils
+
+
 @torch.no_grad()
 def concat_all_gather(tensor):
     """
@@ -177,7 +190,7 @@ def concat_all_gather(tensor):
     *** Warning ***: torch.distributed.all_gather has no gradient.
     """
     tensors_gather = [torch.ones_like(tensor)
-        for _ in range(torch.distributed.get_world_size())]
+                      for _ in range(torch.distributed.get_world_size())]
     torch.distributed.all_gather(tensors_gather, tensor, async_op=False)
 
     output = torch.cat(tensors_gather, dim=0)

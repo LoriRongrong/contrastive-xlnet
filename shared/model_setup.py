@@ -5,10 +5,14 @@ import torch
 from pytorch_pretrained_bert.optimization import BertAdam
 from transformers import XLNetTokenizer
 # updated with relevant files
-from pytorch_pretrained_bert.tokenization_xlnet import (
-    PRETRAINED_VOCAB_POSITIONAL_EMBEDDINGS_SIZES, VOCAB_FILES_NAMES,
-)
-
+# from pytorch_pretrained_bert.tokenization_xlnet import (
+#     PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES, VOCAB_FILES_NAMES,
+# )
+PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES = {
+    "xlnet-base-cased": None,
+    "xlnet-large-cased": None,
+}
+VOCAB_FILES_NAMES = {"vocab_file": "spiece.model"}
 
 TF_PYTORCH_XLNET_NAME_MAP = {
     "XLNet-Large-Cased": "xlnet_cased_L-24_H_1024_A-16",
@@ -55,7 +59,7 @@ def load_tokenizer(xlnet_model_name, do_lower_case, xlnet_vocab_path=None):
         xlnet_vocab_path = os.path.join(
             get_xlnet_config_path(xlnet_model_name), VOCAB_FILES_NAMES)
     max_len = min(
-        PRETRAINED_VOCAB_POSITIONAL_EMBEDDINGS_SIZES[VOCAB_FILES_NAMES, xlnet_model_name], int(1e12))
+        PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES[VOCAB_FILES_NAMES, xlnet_model_name], int(1e12))
     tokenizer = XLNetTokenizer(
         vocab_file=xlnet_vocab_path,
         do_lower_case=do_lower_case,

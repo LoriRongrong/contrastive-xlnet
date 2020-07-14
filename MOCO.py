@@ -8,6 +8,22 @@ Adapt from: https://github.com/facebookresearch/moco
   year    = {2019},
 }
 """
+"""from main_moco.py"""
+
+
+"""
+usage: from the moco github README:
+python MOCO.py \
+  -a resnet50 \
+  --lr 0.03 \
+  --batch-size 256 \
+  --dist-url 'tcp://localhost:10001' --multiprocessing-distributed --world-size 1 --rank 0 \
+  [your imagenet-folder with train and val folders]
+
+"""
+# model_names = sorted(name for name in models.__dict__
+#     if name.islower() and not name.startswith("__")
+#     and callable(models.__dict__[name]))
 
 from transformers import BertTokenizer
 import argparse
@@ -32,24 +48,8 @@ import torchvision.models as models
 import moco.loader
 import moco.builder
 import csv
-
 from PIL import Image
 from torch.utils.data import Dataset
-
-"""
-usage: from the moco github README:
-python MOCO.py \
-  -a resnet50 \
-  --lr 0.03 \
-  --batch-size 256 \
-  --dist-url 'tcp://localhost:10001' --multiprocessing-distributed --world-size 1 --rank 0 \
-  [your imagenet-folder with train and val folders]
-
-"""
-# model_names = sorted(name for name in models.__dict__
-#     if name.islower() and not name.startswith("__")
-#     and callable(models.__dict__[name]))
-
 parser = argparse.ArgumentParser()
 parser.add_argument('--data',  default='./augment.csv', type=str,
                     help='path to dataset')
@@ -62,7 +62,7 @@ parser.add_argument('--epochs', default=100, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
-parser.add_argument('-b', '--batch_size', default=16, type=int,
+parser.add_argument('-b', '--batch_size', default=256, type=int,
                     metavar='N',
                     help='mini-batch size (default: 256), this is the total '
                          'batch size of all GPUs on the current node when '
@@ -90,9 +90,11 @@ parser.add_argument('--dist-backend', default='nccl', type=str,
                     help='distributed backend')
 parser.add_argument('--seed', default=None, type=int,
                     help='seed for initializing training. ')
-parser.add_argument('--gpu', default=0, type=int,
+#  change the default gpu to None
+parser.add_argument('--gpu', default=None, type=int,
                     help='GPU id to use.')
-parser.add_argument('--multiprocessing_distributed', default=True,
+#  change the default multiprocessing_distributed to False
+parser.add_argument('--multiprocessing_distributed', default=False,
                     help='Use multi-processing distributed training to launch '
                          'N processes per node, which has N GPUs. This is the '
                          'fastest way to use PyTorch for either single node or '
@@ -135,8 +137,8 @@ def main():
                       'You may see unexpected behavior when restarting '
                       'from checkpoints.')
     if args.gpu is not None:
-        warnings.warn('You have chosen a specific GPU. This will completely '
-                      'disable data parallelism.')
+        warnings.warn(
+            'You have chosen a specific GPU. This will completely disable data parallelism.')
 
     if args.dist_url == "env://" and args.world_size == -1:
         args.world_size = int(os.environ["WORLD_SIZE"])
@@ -158,6 +160,7 @@ def main():
 
 
 def main_worker(gpu, ngpus_per_node, args):
+    print(torch.cuda.is_available())
     args.gpu = gpu
 
     # suppress printing if not master
@@ -213,7 +216,7 @@ def main_worker(gpu, ngpus_per_node, args):
         pass
         # AllGather implementation (batch shuffle, queue update, etc.) in
         # this code only supports DistributedDataParallel.
-        # raise NotImplementedError("Only DistributedDataParallel is supported.")
+#         raise NotImplementedError("Only DistributedDataParallel is supported.")
 
     # define loss function (criterion) and optimizer
     criterion = nn.CrossEntropyLoss().cuda(args.gpu)
@@ -244,22 +247,27 @@ def main_worker(gpu, ngpus_per_node, args):
     input_ids = []
     attention_masks = []
     path_to_biobert = './pretrained/'
-    tokenizer = BertTokenizer.from_pretrained(
-        path_to_biobert, do_lower_case=True)
+    #  change tokenizer to make it consistent
+
+    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+
     # encode data
     """ this part is different from the MOCO github code"""
+    """https://github.com/huggingface/transformers/issues/5611"""
     with open(args.data, 'r', encoding='utf-8') as f:
         reader = csv.reader(f)
         sentence_sum = 0
         for row in reader:
             sentence1 = row[0]
             sentence2 = row[1]
-            pos_dict1 = tokenizer.encode_plus(sentence1, add_special_tokens=True, max_length=64,
+
+            # change the max_length to None because some of the comments are fairly long
+            pos_dict1 = tokenizer.encode_plus(sentence1, add_special_tokens=True, max_length=1024,
                                               pad_to_max_length=True,
-                                              return_attention_mask=True, return_tensors='pt')
-            pos_dict2 = tokenizer.encode_plus(sentence2, add_special_tokens=True, max_length=64,
+                                              return_attention_mask=True, return_tensors='pt', truncation=True)
+            pos_dict2 = tokenizer.encode_plus(sentence2, add_special_tokens=True, max_length=1024,
                                               pad_to_max_length=True,
-                                              return_attention_mask=True, return_tensors='pt')
+                                              return_attention_mask=True, return_tensors='pt', truncation=True)
             input_id = torch.cat(
                 (pos_dict1['input_ids'], pos_dict2['input_ids']), dim=0)
             mask = torch.cat(
@@ -267,8 +275,9 @@ def main_worker(gpu, ngpus_per_node, args):
             input_ids.append(input_id.reshape([1, -1, 64]))
             attention_masks.append(mask.reshape([1, -1, 64]))
             sentence_sum += 1
-            print(sentence_sum)
-
+            
+            # print(sentence_sum)
+    print ('finish data loading')
     input_ids = torch.cat(input_ids, dim=0)
     attention_masks = torch.cat(attention_masks, dim=0)
     """this part is then the same"""
@@ -317,7 +326,8 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
 
     # switch to train mode
     model.train()
-
+    """add a line trying to debug"""
+   
     end = time.time()
     for i, (sens, masks) in enumerate(train_loader):
         # measure data loading time
@@ -332,6 +342,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
         sen2 = sen2.contiguous()
         mask1 = mask1.contiguous()
         mask2 = mask2.contiguous()
+        
         if args.gpu is not None:
             sen1 = sen1.cuda(args.gpu, non_blocking=True)
             sen2 = sen2.cuda(args.gpu, non_blocking=True)
