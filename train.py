@@ -22,14 +22,14 @@ def get_args(*in_args):
 
     # === Required parameters === #
     parser.add_argument("--data_dir",
-                        default='./data/QNLI',
+                        default='./data/SST-2',
                         type=str,
                         help="The input data dir. Should contain the .tsv files (or other data files) for the task.")
     # TODO: change the help method: change it into xlnet
     parser.add_argument("--xlnet_model", default='xlnet-base-cased', type=str, required=True,
                         help="XLNet pre-trained model selected in the list: xlnet-large-cased, xlnet-base-cased")
     parser.add_argument("--task_name",
-                        default=None,
+                        default='sst', # having some problem with passing in using command line
                         type=str,
                         required=True,
                         help="The name of the task to train.")
@@ -44,7 +44,7 @@ def get_args(*in_args):
     # if the model is vanilla or pre-trained
     parser.add_argument("--xlnet_load_mode", default="from_pretrained", type=str,
                         help="from_pretrained, model_only, state_model_only, state_all")
-    parser.add_argument("--xlnetload_args", default=None, type=str)
+    parser.add_argument("--xlnet_load_args", default=None, type=str)
     # should be pre-trained saved parameters
     parser.add_argument("--xlnet_config_json_path", default=None, type=str)
     parser.add_argument("--xlnet_vocab_path", default=None, type=str)
@@ -124,6 +124,7 @@ def get_args(*in_args):
     parser.add_argument('--not-verbose', action="store_true")
     parser.add_argument('--force-overwrite', action="store_true")
     args = parser.parse_args(*in_args)
+    # print ("checking: ", args)
     return args
 
 

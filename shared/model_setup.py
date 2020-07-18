@@ -16,14 +16,16 @@ VOCAB_FILES_NAMES = {"vocab_file": "spiece.model"}
 
 TF_PYTORCH_XLNET_NAME_MAP = {
     "xlnet-large-cased": "xlnet-large-cased",
-    "xlnet-base-cased": "xlnet-based-cased",
+    "xlnet-base-cased": "xlnet-base-cased",
 }
-
+XLNET_ALL_DIR = './'
 # change variable name
 
 
 def get_xlnet_config_path(xlnet_model_name):
-    return os.path.join(os.environ["BERT_ALL_DIR"], TF_PYTORCH_XLNET_NAME_MAP[xlnet_model_name])
+    # change to handle xlnet all dir path 
+
+    return os.path.join(XLNET_ALL_DIR, TF_PYTORCH_XLNET_NAME_MAP[xlnet_model_name])
 
 
 def load_overall_state(xlnet_load_path, relaxed=True):
@@ -44,6 +46,7 @@ def create_tokenizer(xlnet_model_name, xlnet_load_mode, do_lower_case, xlnet_voc
     elif xlnet_load_mode in ["model_only", "state_model_only", "state_all", "state_full_model",
                              "full_model_only",
                              "state_adapter"]:
+        print("xlnet vocab-path: ",xlnet_vocab_path), 
         tokenizer = load_tokenizer(
             xlnet_model_name=xlnet_model_name,
             do_lower_case=do_lower_case,
@@ -56,14 +59,16 @@ def create_tokenizer(xlnet_model_name, xlnet_load_mode, do_lower_case, xlnet_voc
 
 def load_tokenizer(xlnet_model_name, do_lower_case, xlnet_vocab_path=None):
     if xlnet_vocab_path is None:
+        print("checking again: ", xlnet_model_name, VOCAB_FILES_NAMES)
         xlnet_vocab_path = os.path.join(
-            get_xlnet_config_path(xlnet_model_name), VOCAB_FILES_NAMES)
-    max_len = min(
-        PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES[VOCAB_FILES_NAMES, xlnet_model_name], int(1e12))
+            get_xlnet_config_path(xlnet_model_name), VOCAB_FILES_NAMES["vocab_file"])
+    # max_len = min(
+    #     PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES[xlnet_model_name], int(1e12))
+    # get rid of max length, not sure what happen
     tokenizer = XLNetTokenizer(
         vocab_file=xlnet_vocab_path,
         do_lower_case=do_lower_case,
-        max_len=max_len,
+        # max_len=max_len,
     )
     return tokenizer
 
