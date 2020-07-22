@@ -73,6 +73,7 @@ def get_args(*in_args):
     parser.add_argument("--train_examples_number", type=int, default=None)
     parser.add_argument("--train_save_every", type=int, default=None)
     parser.add_argument("--do_lower_case",
+                        default=False,
                         action='store_true',
                         help="Set this flag if you are using an uncased model.")
     parser.add_argument("--train_batch_size",
@@ -88,7 +89,7 @@ def get_args(*in_args):
                         type=float,
                         help="The initial learning rate for Adam.")
     parser.add_argument("--num_train_epochs",
-                        default=5,
+                        default=10,
                         type=float,
                         help="Total number of training epochs to perform.")
     parser.add_argument("--warmup_proportion",
@@ -186,7 +187,7 @@ def main():
             loss_scale=args.loss_scale,
             fp16=args.fp16,
             warmup_proportion=args.warmup_proportion,
-            state_dict=all_state["optimizer"] if args.bert_load_mode == "state_all" else None,
+            state_dict=all_state["optimizer"] if args.xlnet_load_mode == "state_all" else None,
         )
     else:
         train_examples = None
@@ -233,7 +234,7 @@ def main():
                             model=model, optimizer=optimizer, args=args,
                             save_path=os.path.join(
                                 args.output_dir, f"all_state___epoch{epoch:04d}___batch{step:06d}.p"),
-                            save_mode=args.bert_save_mode,
+                            save_mode=args.xlnet_save_mode,
                             verbose=not args.not_verbose,
                         )
         else:
@@ -244,7 +245,7 @@ def main():
         glue_model_setup.save_xlnet(
             model=model, optimizer=optimizer, args=args,
             save_path=os.path.join(args.output_dir, "all_state.p"),
-            save_mode=args.bert_save_mode,
+            save_mode=args.xlnet_save_mode,
         )
     # remove the hack part for MultiNLI Mismatched dataset
     if args.do_val:

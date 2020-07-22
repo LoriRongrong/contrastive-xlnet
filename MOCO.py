@@ -25,6 +25,19 @@ python MOCO.py \
 #     if name.islower() and not name.startswith("__")
 #     and callable(models.__dict__[name]))
 
+"""
+!mkdir xlnet-base-cased
+!cd xlnet-base-cased
+!wget https://storage.googleapis.com/xlnet/released_models/cased_L-12_H-768_A-12.zip
+!unzip cased_L-12_H-768_A-12.zip
+
+"""
+
+
+"""
+cuda / multiprocess combination: None, True
+                                  0,   False
+"""
 from transformers import XLNetTokenizer
 import argparse
 import builtins
@@ -48,6 +61,7 @@ import torchvision.models as models
 import moco.loader
 import moco.builder
 import csv
+import pandas as pd
 from PIL import Image
 from torch.utils.data import Dataset
 parser = argparse.ArgumentParser()
@@ -58,7 +72,7 @@ parser.add_argument('-a', '--arch', metavar='ARCH', default='./model',
                     help='model names')
 parser.add_argument('-j', '--workers', default=32, type=int, metavar='N',
                     help='number of data loading workers (default: 32)')
-parser.add_argument('--epochs', default=6, type=int, metavar='N',
+parser.add_argument('--epochs', default=5, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
@@ -91,10 +105,10 @@ parser.add_argument('--dist-backend', default='nccl', type=str,
 parser.add_argument('--seed', default=None, type=int,
                     help='seed for initializing training. ')
 #  change the default gpu to None
-parser.add_argument('--gpu', default=None, type=int,
+parser.add_argument('--gpu', default=0, type=int,
                     help='GPU id to use.')
 #  change the default multiprocessing_distributed to False
-parser.add_argument('--multiprocessing_distributed', default=True,
+parser.add_argument('--multiprocessing_distributed', default=False,
                     help='Use multi-processing distributed training to launch '
                          'N processes per node, which has N GPUs. This is the '
                          'fastest way to use PyTorch for either single node or '
@@ -103,7 +117,7 @@ parser.add_argument('--multiprocessing_distributed', default=True,
 parser.add_argument('--save-epoch', default=40, type=int)
 
 # moco specific configs:
-parser.add_argument('--moco-dim', default=128, type=int,
+parser.add_argument('--moco-dim', default=2, type=int,
                     help='feature dimension (default: 128)')
 parser.add_argument('--moco-k', default=96606, type=int,
                     help='queue size; number of negative keys (default: 96606)')
@@ -121,13 +135,9 @@ parser.add_argument('--aug-plus', default=True,
 parser.add_argument('--cos', default=True,
                     help='use cosine lr schedule')
 
-# parser.add_argument('--arch', default='./model',
-#                     help='use cosine lr schedule')
-
-
 def main():
     args = parser.parse_args()
-
+    print ("cuda availability: ", torch.cuda.is_available())
     if args.seed is not None:
         random.seed(args.seed)
         torch.manual_seed(args.seed)
@@ -161,7 +171,6 @@ def main():
 
 
 def main_worker(gpu, ngpus_per_node, args):
-    print(torch.cuda.is_available())
     args.gpu = gpu
 
     # suppress printing if not master
@@ -261,7 +270,7 @@ def main_worker(gpu, ngpus_per_node, args):
         for row in reader:
             sentence1 = row[0]
             sentence2 = row[1]
-
+            
             # change the max_length to None because some of the comments are fairly long
             pos_dict1 = tokenizer.encode_plus(sentence1, add_special_tokens=True, max_length=1024,
                                               pad_to_max_length=True,
@@ -278,7 +287,6 @@ def main_worker(gpu, ngpus_per_node, args):
             sentence_sum += 1
             
             # print(sentence_sum)
-    print ('finish data loading')
     input_ids = torch.cat(input_ids, dim=0)
     attention_masks = torch.cat(attention_masks, dim=0)
     """this part is then the same"""
@@ -296,25 +304,27 @@ def main_worker(gpu, ngpus_per_node, args):
             train_dataset),  # Select batches randomly
         batch_size=args.batch_size  # Trains with this batch size.
     )
-
+    losslist = []
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             train_sampler.set_epoch(epoch)
         adjust_learning_rate(optimizer, epoch, args)
 
         # train for one epoch
-        train(train_loader, model, criterion, optimizer, epoch, args)
+        train(train_loader, model, criterion, optimizer, epoch, args, losslist)
 
-        if epoch % 5 == 0:
+        if epoch % 10 == 0:
             save_checkpoint({
                 'epoch': epoch + 1,
                 'arch': args.arch,
                 'state_dict': model.state_dict(),
                 'optimizer': optimizer.state_dict(),
-            }, is_best=False, filename='moco_model/moco.tar'.format(epoch))
+            }, is_best=False, filename='moco_model/moco.tar')
     # torch.save(model.state_dict(),'state_dict.t7')
+    save_file = pd.DataFrame(data=losslist)
+    save_file.to_csv('ch.csv', index=False, encoding='utf-8', header=None)
 
-def train(train_loader, model, criterion, optimizer, epoch, args):
+def train(train_loader, model, criterion, optimizer, epoch, args, losslist):
     batch_time = AverageMeter('Time', ':6.3f')
     data_time = AverageMeter('Data', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
@@ -354,7 +364,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
         output, target = model(sen_q=sen1, sen_k=sen2,
                                mask_q=mask1, mask_k=mask2)
         loss = criterion(output, target)
-
+        losslist.append(loss.item())
         # acc1/acc5 are (K+1)-way contrast classifier accuracy
         # measure accuracy and record loss
         acc1, acc5 = accuracy(output, target, topk=(1, 5))

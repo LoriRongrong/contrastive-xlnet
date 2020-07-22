@@ -256,7 +256,12 @@ class GlueTaskRunner:
 
     def run_train_step(self, step, batch, train_epoch_state):
         batch = batch.to(self.device)
-        loss = self.model(batch.input_ids, batch.segment_ids, batch.input_mask, batch.label_ids)
+        loss = self.model(
+          input_ids=batch.input_ids,
+          token_type_ids=batch.segment_ids,
+          input_mask=batch.input_mask,
+          labels=batch.label_ids
+        )[0]
         if self.rparams.n_gpu > 1:
             loss = loss.mean()  # mean() to average on multi-gpu.
         if self.rparams.gradient_accumulation_steps > 1:
@@ -290,9 +295,12 @@ class GlueTaskRunner:
             batch = batch.to(self.device)
 
             with torch.no_grad():
-                tmp_eval_loss = self.model(batch.input_ids, batch.segment_ids,
-                                           batch.input_mask, batch.label_ids)
-                logits = self.model(batch.input_ids, batch.segment_ids, batch.input_mask)
+                tmp_eval_loss, logits = self.model(
+                  input_ids=batch.input_ids,
+                  token_type_ids=batch.segment_ids,
+                  input_mask=batch.input_mask,
+                  labels=batch.label_ids
+                )[:2]
                 label_ids = batch.label_ids.cpu().numpy()
 
             logits = logits.detach().cpu().numpy()
@@ -319,7 +327,11 @@ class GlueTaskRunner:
         for step, batch in enumerate(tqdm(test_dataloader, desc="Predictions (Test)")):
             batch = batch.to(self.device)
             with torch.no_grad():
-                logits = self.model(batch.input_ids, batch.segment_ids, batch.input_mask)
+                logits = self.model(
+                  input_ids=batch.input_ids,
+                  token_type_ids=batch.segment_ids,
+                  input_mask=batch.input_mask
+                )[0]
             logits = logits.detach().cpu().numpy()
             all_logits.append(logits)
         all_logits = np.concatenate(all_logits, axis=0)

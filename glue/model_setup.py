@@ -68,7 +68,7 @@ def load_xlnet(task_type, xlnet_model_name, xlnet_load_mode, all_state, num_labe
                xlnet_config_json_path=None):
     if xlnet_config_json_path is None:
         xlnet_config_json_path = os.path.join(
-            get_xlnet_config_path(xlnet_model_name), "xlnet_config.json")
+            get_xlnet_config_path(xlnet_model_name), "config.json")
     if xlnet_load_mode in ("model_only", "full_model_only"):
         state_dict = all_state
     elif xlnet_load_mode in ["state_model_only", "state_all", "state_full_model"]:
@@ -77,18 +77,20 @@ def load_xlnet(task_type, xlnet_model_name, xlnet_load_mode, all_state, num_labe
         raise KeyError(xlnet_load_mode)
 
     if task_type == TaskType.CLASSIFICATION:
-        if xlnet_load_mode in ("state_full_model", "full_model_only"):
-            model = XLNetForSequenceClassification.from_state_dict_full(
-                config_file=xlnet_config_json_path,  # need to figure out what the config file is
-                state_dict=state_dict,
-                num_labels=num_labels,
-            )
-        else:
-            model = XLNetForSequenceClassification.from_state_dict(
-                config_file=xlnet_config_json_path,
-                state_dict=state_dict,
-                num_labels=num_labels,
-            )
+        # if xlnet_load_mode in ("state_full_model", "full_model_only"):
+          #  change from_state_dict_full to from_pretrained
+        model = XLNetForSequenceClassification.from_pretrained(
+            pretrained_model_name_or_path=xlnet_model_name,
+            config=xlnet_config_json_path,  # need to figure out what the config file is
+            state_dict=state_dict,
+            num_labels=num_labels
+        )
+        # else:
+        #     model = XLNetForSequenceClassification.from_pretrained(
+        #         config_file=xlnet_config_json_path,
+        #         state_dict=state_dict,
+        #         num_labels=num_labels,
+        #     )
     else:
         raise KeyError(task_type)
     return model

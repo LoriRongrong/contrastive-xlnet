@@ -50,17 +50,18 @@ class MoCo(nn.Module):
         #  change encoder_q.classifier into logits_proj
         
         fc_features = self.encoder_q.logits_proj.in_features
-        print('fc_feature moco nuilder 52 ',fc_features)
+        print('fc_feature moco nuilder ',fc_features)
         print('dim ', dim)
+        
         self.encoder_q.logits_proj = nn.Linear(fc_features, dim)
         self.encoder_k.logits_proj = nn.Linear(fc_features, dim)
 
         if mlp:
             dim_mlp = self.encoder_q.logits_proj.weight.shape[1]
-            print('dim_mlp ', dim_mlp)
+            # print('dim_mlp line 60', self.encoder_q.logits_proj.weight.shape)
             self.encoder_q.logits_proj = nn.Sequential(
                 nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), self.encoder_q.logits_proj)
-            print(self.encoder_q.logits_proj)
+            # print("line 63, ",self.encoder_q.logits_proj.weight.shape)
             self.encoder_k.logits_proj = nn.Sequential(
                 nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), self.encoder_k.logits_proj)
 

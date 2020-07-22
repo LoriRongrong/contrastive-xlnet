@@ -8,6 +8,22 @@ from transformers import XLNetTokenizer
 # from pytorch_pretrained_bert.tokenization_xlnet import (
 #     PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES, VOCAB_FILES_NAMES,
 # )
+""" usage
+
+!python train.py \
+    --task_name sst \
+    --do_train --do_val --do_test --do_val_history \
+    --do_save \
+    --do_lower_case \
+    --xlnet_model xlnet-base-cased \
+    --xlnet_load_path moco_model/moco.p \
+    --xlnet_load_mode model_only \
+    --xlnet_save_mode model_all \
+    --train_batch_size 24 \
+    --learning_rate 2e-5 \
+    --output_dir ./sst_output
+"""
+
 PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES = {
     "xlnet-base-cased": None,
     "xlnet-large-cased": None,
@@ -24,7 +40,7 @@ XLNET_ALL_DIR = './'
 
 def get_xlnet_config_path(xlnet_model_name):
     # change to handle xlnet all dir path 
-
+    print ("print check:", os.path.join(XLNET_ALL_DIR, TF_PYTORCH_XLNET_NAME_MAP[xlnet_model_name]))
     return os.path.join(XLNET_ALL_DIR, TF_PYTORCH_XLNET_NAME_MAP[xlnet_model_name])
 
 
