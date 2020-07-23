@@ -1,4 +1,5 @@
 # contrastive-xlnet
+- Original ideas UCSD/AI4H/[CERT](https://github.com/UCSD-AI4H/CERT)
 - First prepare augmented.csv
 
 - Then download pretrained xlnet-base-cased to local using:\\
